@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ShieldCheck, LogOut, Users, TrendingUp, Vote, AlertTriangle, PlusCircle, Trash2, BarChart3 } from 'lucide-react';
+import { ShieldCheck, LogOut, Users, TrendingUp, Vote, AlertTriangle, PlusCircle, Trash2, BarChart3, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -43,7 +43,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     const adminData = localStorage.getItem('admin');
-    
+
     if (!token || !adminData) {
       navigate('/admin/login');
       return;
@@ -185,7 +185,7 @@ const AdminDashboard = () => {
 
   const handleDeleteCandidate = async (candidateId) => {
     const token = localStorage.getItem('adminToken');
-    
+
     if (!window.confirm('Are you sure you want to delete this candidate?')) {
       return;
     }
@@ -400,11 +400,10 @@ const AdminDashboard = () => {
                                 <p>End: {new Date(election.end_date).toLocaleDateString()}</p>
                               </div>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              election.status === 'active' 
-                                ? 'bg-green-100 text-green-800' 
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${election.status === 'active'
+                                ? 'bg-green-100 text-green-800'
                                 : 'bg-gray-100 text-gray-800'
-                            }`}>
+                              }`}>
                               {election.status}
                             </span>
                           </div>
@@ -572,20 +571,18 @@ const AdminDashboard = () => {
                             <td className="p-3">{voter.email}</td>
                             <td className="p-3">{voter.aadhaar.slice(0, 4)}****{voter.aadhaar.slice(-4)}</td>
                             <td className="p-3">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                voter.status === 'active' 
-                                  ? 'bg-green-100 text-green-800' 
+                              <span className={`px-2 py-1 rounded-full text-xs ${voter.status === 'active'
+                                  ? 'bg-green-100 text-green-800'
                                   : 'bg-red-100 text-red-800'
-                              }`}>
+                                }`}>
                                 {voter.status}
                               </span>
                             </td>
                             <td className="p-3">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                voter.voted 
-                                  ? 'bg-blue-100 text-blue-800' 
+                              <span className={`px-2 py-1 rounded-full text-xs ${voter.voted
+                                  ? 'bg-blue-100 text-blue-800'
                                   : 'bg-gray-100 text-gray-800'
-                              }`}>
+                                }`}>
                                 {voter.voted ? 'Yes' : 'No'}
                               </span>
                             </td>
@@ -643,9 +640,8 @@ const AdminDashboard = () => {
                         {results.candidates.map((candidate, index) => (
                           <div
                             key={candidate.id}
-                            className={`border rounded-lg p-4 ${
-                              index === 0 ? 'border-[#059669] bg-green-50' : ''
-                            }`}
+                            className={`border rounded-lg p-4 ${index === 0 ? 'border-[#059669] bg-green-50' : ''
+                              }`}
                             data-testid={`result-candidate-${candidate.id}`}
                           >
                             <div className="flex items-center justify-between">
@@ -666,7 +662,7 @@ const AdminDashboard = () => {
                                   {candidate.vote_count}
                                 </p>
                                 <p className="text-sm text-gray-600">
-                                  {results.total_votes > 0 
+                                  {results.total_votes > 0
                                     ? `${((candidate.vote_count / results.total_votes) * 100).toFixed(1)}%`
                                     : '0%'
                                   }
@@ -720,7 +716,7 @@ const AdminDashboard = () => {
                           ⚠️ {fraudData.length} suspicious vote(s) detected
                         </p>
                       </div>
-                      
+
                       <div className="space-y-3 max-h-[400px] overflow-y-auto">
                         {fraudData.map((vote, index) => (
                           <div

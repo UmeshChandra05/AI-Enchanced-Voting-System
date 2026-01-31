@@ -30,9 +30,9 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen animate-fade-in">
       {/* Hero Section */}
-      <div 
+      <div
         className="relative min-h-screen flex items-center justify-center text-white overflow-hidden"
         style={{
           backgroundImage: 'url(https://images.unsplash.com/photo-1760872645959-98d5fdb49287)',
@@ -41,7 +41,7 @@ const LandingPage = () => {
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-[#1e3a8a]/90 to-[#1e3a8a]/70"></div>
-        
+
         <div className="relative z-10 max-w-6xl mx-auto px-6 py-20 text-center">
           <div className="mb-6 flex items-center justify-center gap-3">
             <Landmark className="w-12 h-12" />
@@ -49,27 +49,27 @@ const LandingPage = () => {
               SmartBallot
             </h1>
           </div>
-          
+
           <p className="text-xl md:text-2xl mb-4 text-blue-100 max-w-3xl mx-auto leading-relaxed">
             AI-Enhanced Digital Voting with Secure Face Authentication
           </p>
-          
+
           <p className="text-base md:text-lg mb-12 text-blue-200 max-w-2xl mx-auto">
             One Person. One Vote. Powered by Multi-Factor Authentication, Facial Recognition, and ML-based Fraud Detection.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <Button 
-              onClick={() => navigate('/register')} 
+            <Button
+              onClick={() => navigate('/register')}
               data-testid="get-started-btn"
               className="bg-[#059669] hover:bg-[#047857] text-white px-8 py-6 text-lg rounded-md shadow-lg font-medium"
             >
               <UserCheck className="mr-2 w-5 h-5" />
               Get Started - Register
             </Button>
-            <Button 
-              onClick={() => navigate('/login')} 
+            <Button
+              onClick={() => navigate('/login')}
               data-testid="voter-login-btn"
               className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border-2 border-white/30 px-8 py-6 text-lg rounded-md font-medium"
             >
@@ -197,8 +197,8 @@ const LandingPage = () => {
         <div className="max-w-2xl mx-auto">
           <h3 className="text-2xl font-semibold mb-4">Election Administrator?</h3>
           <p className="mb-6 text-blue-200">Manage elections, monitor voters, and detect fraud from the admin panel</p>
-          <Button 
-            onClick={() => navigate('/admin/login')} 
+          <Button
+            onClick={() => navigate('/admin/login')}
             data-testid="admin-login-link"
             className="bg-white text-[#1e3a8a] hover:bg-gray-100 px-6 py-3 rounded-md font-medium"
           >

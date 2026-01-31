@@ -168,7 +168,8 @@ function Start-All {
     Start-Backend
     Start-Frontend
     Show-Access
-    Start-Sleep 3
+    Write-Host "`n[INFO] Waiting for services to initialize..." -ForegroundColor Cyan
+    Start-Sleep 10
     Show-Status
 }
 
@@ -183,4 +184,4 @@ switch ($command.ToLower()) {
     default    { Start-All }
 }
 
-Pause
+
