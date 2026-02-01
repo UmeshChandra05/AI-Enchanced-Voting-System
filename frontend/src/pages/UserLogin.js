@@ -126,6 +126,15 @@ const UserLogin = () => {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Please enter a valid email address');
+      speak("Please enter a valid email address.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -139,13 +148,32 @@ const UserLogin = () => {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         toast.success(`Welcome back, ${response.data.user.name}!`);
+        speak(`Welcome back, ${response.data.user.name}! Redirecting to your dashboard.`);
         setTimeout(() => {
           navigate('/dashboard');
         }, 1000);
       }
     } catch (error) {
-      const message = error.response?.data?.detail || 'Login failed. Please check your credentials.';
-      toast.error(message);
+      console.error("Login error:", error.response?.data);
+
+      let errorMessage = 'Login failed. Please check your credentials.';
+
+      if (error.response?.data?.detail) {
+        if (Array.isArray(error.response.data.detail)) {
+          // Handle Pydantic validation errors (422)
+          errorMessage = error.response.data.detail
+            .map(err => `${err.loc[err.loc.length - 1]}: ${err.msg}`)
+            .join(', ');
+        } else {
+          // Handle custom HTTPExceptions (400, 401, etc.)
+          errorMessage = error.response.data.detail;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
+      speak(`Login failed. ${errorMessage}`);
     } finally {
       setLoading(false);
     }
