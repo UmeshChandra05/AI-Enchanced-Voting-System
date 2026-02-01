@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
-import { Camera, LogIn, Landmark, ScanFace, X, CheckCircle2 } from 'lucide-react';
+import { Camera, LogIn, Landmark, ScanFace, X, CheckCircle2, Volume2, VolumeX } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -24,6 +24,34 @@ const UserLogin = () => {
     email: '',
     password: ''
   });
+  const [isTTSActive, setIsTTSActive] = useState(true);
+
+  // Text-to-speech function
+  const speak = (text) => {
+    if (isTTSActive && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  useEffect(() => {
+    if (!showCamera && !capturedImage) {
+      speak("Voter Authentication Portal. Please enter your email and password.");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showCamera && stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.onloadedmetadata = () => {
+        videoRef.current.play().catch(e => console.error("Error playing video:", e));
+        setTimeout(() => setVideoReady(true), 500);
+        speak("Verification camera is active. Please look at the camera to verify your identity.");
+      };
+    }
+  }, [showCamera, stream]);
 
   useEffect(() => {
     return () => {
@@ -35,22 +63,18 @@ const UserLogin = () => {
 
   const startCamera = async () => {
     try {
+      setVideoReady(false);
+      setShowCamera(true);
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480 }
       });
       setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play().catch(e => console.error("Error playing video:", e));
-          setVideoReady(true);
-        };
-      }
-      setShowCamera(true);
-      setVideoReady(false);
+      setCapturedImage(null);
     } catch (error) {
       console.error('Camera error:', error);
       toast.error('Camera access denied. You can still login with credentials.');
+      setShowCamera(false);
+      speak("Camera access failed. You can proceed with login using credentials only.");
     }
   };
 
@@ -77,9 +101,11 @@ const UserLogin = () => {
 
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
+        setStream(null);
       }
       setShowCamera(false);
       toast.success('Identity verified!');
+      speak("Identity verified! You can now complete your login.");
     }
   };
 
@@ -128,10 +154,30 @@ const UserLogin = () => {
   return (
     <div className="min-h-screen bg-[#f8fafc] py-12 px-4 animate-fade-in">
       <div className="max-w-md mx-auto">
-        <div className="text-center mb-8">
-          <Landmark className="w-12 h-12 text-[#1e3a8a] mx-auto mb-4" />
-          <h1 className="text-4xl font-bold text-[#1e3a8a]">SmartBallot</h1>
-          <p className="text-gray-600">Voter Authentication Portal</p>
+        <div className="text-center mb-8 relative">
+          <div className="absolute top-0 right-[-2.5rem] hidden md:block">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const newState = !isTTSActive;
+                setIsTTSActive(newState);
+                if (newState) speak("Text to speech enabled");
+                else window.speechSynthesis.cancel();
+              }}
+              className="text-[#1e3a8a]"
+            >
+              {isTTSActive ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+            </Button>
+          </div>
+          <Landmark className="w-16 h-16 text-[#1e3a8a] mx-auto mb-4 p-3 bg-white rounded-2xl shadow-lg border border-[#1e3a8a]/10" />
+          <h1 className="text-3xl font-extrabold text-[#1e3a8a] tracking-tight mb-2 leading-tight">
+            AI-Enhanced Digital Voting System
+            <span className="block text-lg font-medium text-[#059669] mt-1 italic">
+              with Secure Face Authentication
+            </span>
+          </h1>
+          <p className="text-gray-600 font-medium">Voter Authentication Portal</p>
         </div>
 
         <Card className="glass border-t-4 border-t-[#1e3a8a] shadow-2xl overflow-hidden hover-card">

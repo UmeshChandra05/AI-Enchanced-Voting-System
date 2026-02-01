@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
-import { Camera, Check, ArrowLeft, ScanFace, X, CheckCircle2 } from 'lucide-react';
+import { Camera, Check, ArrowLeft, ScanFace, X, CheckCircle2, Volume2, VolumeX, Vote, PartyPopper } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -24,13 +24,23 @@ const VotingPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
   const [step, setStep] = useState(1); // 1: Select, 2: Verify, 3: Confirm
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const fetchCandidates = useCallback(async (token) => {
     try {
       const response = await axios.get(`${API}/elections/${electionId}/candidates`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setCandidates(response.data.candidates || []);
+      const fetchedCandidates = response.data.candidates || [];
+      // Append NOTA option
+      const notaCandidate = {
+        id: 'nota',
+        name: 'NOTA (None Of The Above)',
+        party: 'None',
+        description: 'I do not wish to vote for any of the listed candidates.',
+        image_url: null
+      };
+      setCandidates([...fetchedCandidates, notaCandidate]);
     } catch (error) {
       toast.error('Failed to load candidates');
     } finally {
@@ -56,26 +66,50 @@ const VotingPage = () => {
     };
   }, [stream]);
 
+  const [isTTSActive, setIsTTSActive] = useState(true);
+
+  const speak = (text) => {
+    if (isTTSActive && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  useEffect(() => {
+    if (step === 1 && !loading) {
+      speak("Please select your candidate from the list below.");
+    }
+  }, [step, loading]);
+
   const startCamera = async () => {
     try {
+      setVideoReady(false);
+      setShowCamera(true);
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480 }
       });
       setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play().catch(e => console.error("Error playing video:", e));
-          setVideoReady(true);
-        };
-      }
-      setShowCamera(true);
-      setVideoReady(false);
+      setCapturedImage(null);
     } catch (error) {
       console.error('Camera error:', error);
       toast.error('Camera access denied. You can skip verification if needed.');
+      setShowCamera(false);
+      speak("Camera access failed. You can skip verification to continue.");
     }
   };
+
+  useEffect(() => {
+    if (showCamera && stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.onloadedmetadata = () => {
+        videoRef.current.play().catch(e => console.error("Error playing video:", e));
+        setTimeout(() => setVideoReady(true), 500);
+        speak("Verification camera active. Please verify your identity to vote.");
+      };
+    }
+  }, [showCamera, stream]);
 
   const capturePhoto = () => {
     const video = videoRef.current;
@@ -100,9 +134,11 @@ const VotingPage = () => {
 
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
+        setStream(null);
       }
       setShowCamera(false);
       toast.success('Identity verified locally! Proceeding to confirmation.');
+      speak("Identity verified! Please review your selection before submitting.");
       setStep(3);
     }
   };
@@ -110,15 +146,18 @@ const VotingPage = () => {
   const skipVerification = () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
+      setStream(null);
     }
     setShowCamera(false);
     setCapturedImage(null);
     toast.info('Verification skipped. Proceed to confirmation.');
+    speak("Verification skipped. Please review your selection before submitting.");
     setStep(3);
   };
 
   const handleSubmitVote = async () => {
     setSubmitting(true);
+    speak("Submitting your vote. Please wait.");
 
     try {
       const token = localStorage.getItem('token');
@@ -133,10 +172,12 @@ const VotingPage = () => {
       );
 
       if (response.data.success) {
-        toast.success('Vote recorded successfully! Thank you for voting.');
+        setShowCelebration(true);
+        speak("Vote recorded successfully! Thank you for participating in the democratic process.");
+        toast.success('Vote recorded successfully!');
         setTimeout(() => {
           navigate('/dashboard');
-        }, 2000);
+        }, 5000);
       }
     } catch (error) {
       const message = error.response?.data?.detail || 'Vote submission failed';
@@ -158,14 +199,31 @@ const VotingPage = () => {
   return (
     <div className="min-h-screen bg-[#f8fafc] py-12 px-4 animate-fade-in">
       <div className="max-w-4xl mx-auto">
-        <Button
-          onClick={() => navigate('/dashboard')}
-          variant="outline"
-          className="mb-8 rounded-full px-6 border-[#1e3a8a] text-[#1e3a8a] hover:bg-[#1e3a8a]/10"
-        >
-          <ArrowLeft className="mr-2 w-4 h-4" />
-          Return to Dashboard
-        </Button>
+        <div className="flex items-center justify-between mb-8">
+          <Button
+            onClick={() => navigate('/dashboard')}
+            variant="outline"
+            className="rounded-full px-6 border-[#1e3a8a] text-[#1e3a8a] hover:bg-[#1e3a8a]/10"
+          >
+            <ArrowLeft className="mr-2 w-4 h-4" />
+            Return to Dashboard
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const newState = !isTTSActive;
+              setIsTTSActive(newState);
+              if (newState) speak("Voice guidance enabled");
+              else window.speechSynthesis.cancel();
+            }}
+            className="text-[#1e3a8a] border border-[#1e3a8a]/20"
+          >
+            {isTTSActive ? <Volume2 className="w-5 h-5 mr-2" /> : <VolumeX className="w-5 h-5 mr-2" />}
+            {isTTSActive ? "Voice On" : "Voice Off"}
+          </Button>
+        </div>
 
         {/* Improved Progress Tracker */}
         <div className="mb-12 max-w-2xl mx-auto relative">
@@ -223,13 +281,19 @@ const VotingPage = () => {
                   <CardContent className="p-8">
                     <div className="flex items-center gap-6">
                       <div className="relative">
-                        <img
-                          src={candidate.image_url}
-                          alt={candidate.name}
-                          className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
-                        />
+                        {candidate.image_url ? (
+                          <img
+                            src={candidate.image_url}
+                            alt={candidate.name}
+                            className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md transition-transform hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 border-4 border-white shadow-md">
+                            <ScanFace className="w-10 h-10" />
+                          </div>
+                        )}
                         {selectedCandidate?.id === candidate.id && (
-                          <div className="absolute -top-2 -right-2 bg-[#059669] text-white rounded-full p-2 shadow-lg">
+                          <div className="absolute -top-2 -right-2 bg-[#059669] text-white rounded-full p-2 shadow-lg z-20">
                             <Check className="w-5 h-5" />
                           </div>
                         )}
@@ -238,6 +302,13 @@ const VotingPage = () => {
                         <p className="text-sm font-bold text-[#059669] uppercase tracking-widest mb-1">{candidate.party}</p>
                         <h3 className="text-2xl font-bold text-gray-900">{candidate.name}</h3>
                         <p className="text-gray-500 mt-1">Click to select</p>
+                        {candidate.description && (
+                          <div className="mt-3 p-3 bg-white/50 rounded-xl border border-gray-100/50">
+                            <p className="text-sm text-[#1e3a8a] italic leading-snug">
+                              <strong>Note:</strong> {candidate.description}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -316,11 +387,17 @@ const VotingPage = () => {
                 </div>
 
                 <div className="bg-white/50 border border-gray-100 p-8 rounded-3xl shadow-inner text-center">
-                  <img
-                    src={selectedCandidate.image_url}
-                    alt={selectedCandidate.name}
-                    className="w-32 h-32 rounded-full object-cover border-4 border-[#059669] mx-auto mb-6 shadow-xl"
-                  />
+                  {selectedCandidate.id !== 'nota' ? (
+                    <img
+                      src={selectedCandidate.image_url}
+                      alt={selectedCandidate.name}
+                      className="w-32 h-32 rounded-full object-cover border-4 border-[#059669] mx-auto mb-6 shadow-xl"
+                    />
+                  ) : (
+                    <div className="w-32 h-32 rounded-full bg-slate-200 border-4 border-slate-300 mx-auto mb-6 flex items-center justify-center">
+                      <Vote className="w-16 h-16 text-slate-400" />
+                    </div>
+                  )}
                   <h3 className="text-3xl font-black text-gray-900 mb-1">{selectedCandidate.name}</h3>
                   <p className="text-xl font-bold text-[#059669] uppercase tracking-[0.2em]">{selectedCandidate.party}</p>
 
@@ -362,6 +439,38 @@ const VotingPage = () => {
         )}
 
         <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+        {/* Celebration Overlay */}
+        {showCelebration && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#1e3a8a]/95 backdrop-blur-md animate-fade-in">
+            <div className="text-center p-12 bg-white rounded-[3rem] shadow-2xl animate-scale-in max-w-lg mx-4 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-green-400 via-blue-500 to-purple-500"></div>
+              <div className="confetti-container">
+                {[...Array(20)].map((_, i) => (
+                  <div key={i} className={`confetti-piece bg-[${['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'][i % 4]}]`}
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      animationDelay: `${Math.random() * 3}s`,
+                      backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'][i % 4]
+                    }}></div>
+                ))}
+              </div>
+
+              <div className="relative z-10">
+                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+                  <CheckCircle2 className="w-16 h-16 text-green-600" />
+                </div>
+                <h2 className="text-4xl font-black text-[#1e3a8a] mb-4">Vote Confirmed!</h2>
+                <p className="text-xl text-gray-600 mb-8 font-medium">Your voice has been successfully recorded in the system.</p>
+                <div className="flex items-center justify-center gap-3 py-4 px-6 bg-green-50 rounded-2xl border border-green-100 inline-flex">
+                  <PartyPopper className="w-6 h-6 text-green-600" />
+                  <span className="text-green-800 font-bold">Successfully Registered!</span>
+                </div>
+                <p className="mt-8 text-gray-400 text-sm italic">Returning to dashboard in a moment...</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
