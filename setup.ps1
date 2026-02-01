@@ -131,8 +131,8 @@ Write-Host "`n[STEP 6/6] Creating config..."
 $jwt = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 32 | % {[char]$_})
 
 @"
-MONGODB_URI=mongodb://localhost:27017
-DATABASE_NAME=smartballot
+MONGO_URL=mongodb://localhost:27017
+DB_NAME=smartballot
 JWT_SECRET=$jwt
 JWT_ALGORITHM=HS256
 JWT_EXPIRATION=30
@@ -158,5 +158,3 @@ Write-Host ""
 Write-Host "Start app using:"
 Write-Host "start.ps1"
 Write-Host ""
-
-Pause

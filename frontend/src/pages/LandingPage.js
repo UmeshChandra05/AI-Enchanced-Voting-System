@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { ShieldCheck, Vote, UserCheck, ScanFace, Landmark, TrendingUp, Users, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Vote, UserCheck, ScanFace, Landmark, TrendingUp, Users, CheckCircle2, Volume2, VolumeX } from 'lucide-react';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -21,18 +21,26 @@ const LandingPage = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const [isTTSActive, setIsTTSActive] = useState(true);
+
   const speak = (text) => {
-    if ('speechSynthesis' in window) {
+    if (isTTSActive && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'en-IN';
+      utterance.rate = 0.9;
       window.speechSynthesis.speak(utterance);
     }
   };
 
+  useEffect(() => {
+    speak("Welcome to the AI-Enhanced Digital Voting System. Secure, transparent, and accessible voting for all citizens.");
+  }, []);
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen animate-fade-in">
       {/* Hero Section */}
-      <div 
+      <div
         className="relative min-h-screen flex items-center justify-center text-white overflow-hidden"
         style={{
           backgroundImage: 'url(https://images.unsplash.com/photo-1760872645959-98d5fdb49287)',
@@ -41,35 +49,38 @@ const LandingPage = () => {
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-[#1e3a8a]/90 to-[#1e3a8a]/70"></div>
-        
+
         <div className="relative z-10 max-w-6xl mx-auto px-6 py-20 text-center">
-          <div className="mb-6 flex items-center justify-center gap-3">
-            <Landmark className="w-12 h-12" />
-            <h1 className="text-5xl md:text-6xl font-bold" style={{ fontFamily: 'Merriweather, serif' }}>
-              SmartBallot
-            </h1>
+          <div className="mb-6 flex flex-col items-center justify-center gap-3">
+            <div className="flex items-center gap-4 mb-2">
+              <Landmark className="w-16 h-16 text-white p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20" />
+              <h1 className="text-5xl md:text-7xl font-black tracking-tighter" style={{ fontFamily: 'Merriweather, serif' }}>
+                SmartBallot
+              </h1>
+            </div>
+            <div className="h-1 w-24 bg-[#059669] rounded-full mb-4"></div>
           </div>
-          
+
           <p className="text-xl md:text-2xl mb-4 text-blue-100 max-w-3xl mx-auto leading-relaxed">
             AI-Enhanced Digital Voting with Secure Face Authentication
           </p>
-          
+
           <p className="text-base md:text-lg mb-12 text-blue-200 max-w-2xl mx-auto">
             One Person. One Vote. Powered by Multi-Factor Authentication, Facial Recognition, and ML-based Fraud Detection.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <Button 
-              onClick={() => navigate('/register')} 
+            <Button
+              onClick={() => navigate('/register')}
               data-testid="get-started-btn"
               className="bg-[#059669] hover:bg-[#047857] text-white px-8 py-6 text-lg rounded-md shadow-lg font-medium"
             >
               <UserCheck className="mr-2 w-5 h-5" />
               Get Started - Register
             </Button>
-            <Button 
-              onClick={() => navigate('/login')} 
+            <Button
+              onClick={() => navigate('/login')}
               data-testid="voter-login-btn"
               className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border-2 border-white/30 px-8 py-6 text-lg rounded-md font-medium"
             >
@@ -197,8 +208,8 @@ const LandingPage = () => {
         <div className="max-w-2xl mx-auto">
           <h3 className="text-2xl font-semibold mb-4">Election Administrator?</h3>
           <p className="mb-6 text-blue-200">Manage elections, monitor voters, and detect fraud from the admin panel</p>
-          <Button 
-            onClick={() => navigate('/admin/login')} 
+          <Button
+            onClick={() => navigate('/admin/login')}
             data-testid="admin-login-link"
             className="bg-white text-[#1e3a8a] hover:bg-gray-100 px-6 py-3 rounded-md font-medium"
           >
@@ -209,19 +220,22 @@ const LandingPage = () => {
 
       {/* Footer */}
       <footer className="py-8 px-6 bg-gray-900 text-gray-300 text-center">
-        <p>&copy; 2025 SmartBallot - AI-Enhanced Digital Voting System</p>
+        <p>&copy; 2026 SmartBallot - AI-Enhanced Digital Voting System</p>
         <p className="text-sm mt-2">Powered by DeepFace, FastAPI, React & MongoDB</p>
       </footer>
 
-      {/* TTS Button */}
-      <button
-        onClick={() => speak('SmartBallot - AI Enhanced Digital Voting System. Secure, transparent, and accessible voting for all citizens.')}
-        className="tts-button"
-        data-testid="tts-button"
-        aria-label="Text to speech"
+      <Button
+        onClick={() => {
+          const newState = !isTTSActive;
+          setIsTTSActive(newState);
+          if (newState) speak("Text to speech enabled. SmartBallot - AI Enhanced Digital Voting System. Secure, transparent, and accessible voting for all citizens.");
+          else window.speechSynthesis.cancel();
+        }}
+        className={`fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-2xl z-50 transition-all duration-300 ${isTTSActive ? 'bg-[#059669] hover:bg-[#047857]' : 'bg-gray-600 hover:bg-gray-500'}`}
+        aria-label="Toggle text to speech"
       >
-        🔊
-      </button>
+        {isTTSActive ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+      </Button>
     </div>
   );
 };

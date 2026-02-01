@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ShieldCheck, LogOut, Users, TrendingUp, Vote, AlertTriangle, PlusCircle, Trash2, BarChart3 } from 'lucide-react';
+import { ShieldCheck, LogOut, Users, TrendingUp, Vote, AlertTriangle, PlusCircle, Trash2, BarChart3, CheckCircle2, Camera, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -24,6 +24,7 @@ const AdminDashboard = () => {
   const [candidates, setCandidates] = useState([]);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [fraudMetrics, setFraudMetrics] = useState(null);
 
   // Form states
   const [electionForm, setElectionForm] = useState({
@@ -37,13 +38,16 @@ const AdminDashboard = () => {
     name: '',
     party: '',
     election_id: '',
-    image_url: ''
+    image_url: '',
+    description: ''
   });
+  const [candidateImage, setCandidateImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     const adminData = localStorage.getItem('admin');
-    
+
     if (!token || !adminData) {
       navigate('/admin/login');
       return;
@@ -129,6 +133,7 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setFraudData(response.data.suspicious_votes || []);
+      setFraudMetrics(response.data.analysis_metrics || null);
     } catch (error) {
       toast.error('Failed to fetch fraud data');
     }
@@ -155,6 +160,39 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please upload an image file');
+        return;
+      }
+
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Image size should be less than 2MB');
+        return;
+      }
+
+      setCandidateImage(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+        setCandidateForm({ ...candidateForm, image_url: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearImage = () => {
+    setCandidateImage(null);
+    setImagePreview(null);
+    setCandidateForm({ ...candidateForm, image_url: '' });
+  };
+
   const handleCreateCandidate = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem('adminToken');
@@ -173,7 +211,9 @@ const AdminDashboard = () => {
 
       if (response.data.success) {
         toast.success('Candidate added successfully!');
-        setCandidateForm({ name: '', party: '', election_id: '', image_url: '' });
+        setCandidateForm({ name: '', party: '', election_id: '', image_url: '', description: '' });
+        setCandidateImage(null);
+        setImagePreview(null);
         if (selectedElection) {
           fetchCandidates(selectedElection, token);
         }
@@ -185,7 +225,7 @@ const AdminDashboard = () => {
 
   const handleDeleteCandidate = async (candidateId) => {
     const token = localStorage.getItem('adminToken');
-    
+
     if (!window.confirm('Are you sure you want to delete this candidate?')) {
       return;
     }
@@ -304,6 +344,25 @@ const AdminDashboard = () => {
           </Card>
         </div>
 
+        {/* Gender Stats */}
+        {stats.gender_stats && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {Object.entries(stats.gender_stats).map(([gender, count]) => (
+              <Card key={gender} className="border-l-4 border-l-[#1e3a8a]/40 bg-white/50 backdrop-blur-sm">
+                <CardContent className="p-5 flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-500 text-sm font-medium">{gender} Voters</p>
+                    <p className="text-2xl font-bold text-gray-800">{count}</p>
+                  </div>
+                  <div className="p-3 bg-[#1e3a8a]/5 rounded-xl">
+                    <Users className="w-6 h-6 text-[#1e3a8a]" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
         {/* Main Tabs */}
         <Tabs defaultValue="elections" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 bg-white border rounded-lg p-1">
@@ -400,11 +459,10 @@ const AdminDashboard = () => {
                                 <p>End: {new Date(election.end_date).toLocaleDateString()}</p>
                               </div>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              election.status === 'active' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${election.status === 'active'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                              }`}>
                               {election.status}
                             </span>
                           </div>
@@ -474,13 +532,60 @@ const AdminDashboard = () => {
                       </select>
                     </div>
                     <div>
-                      <Label htmlFor="image_url">Image URL (Optional)</Label>
-                      <Input
-                        id="image_url"
-                        data-testid="candidate-image-input"
-                        placeholder="https://example.com/image.jpg"
-                        value={candidateForm.image_url}
-                        onChange={(e) => setCandidateForm({ ...candidateForm, image_url: e.target.value })}
+                      <Label htmlFor="candidate_image">Candidate Symbol/Photo *</Label>
+                      <div className="space-y-3">
+                        {imagePreview ? (
+                          <div className="relative inline-block">
+                            <img
+                              src={imagePreview}
+                              alt="Preview"
+                              className="w-32 h-32 object-cover rounded-xl border-2 border-[#059669] shadow-md"
+                            />
+                            <button
+                              type="button"
+                              onClick={clearImage}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-lg"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-[#059669] transition-colors cursor-pointer">
+                            <input
+                              type="file"
+                              id="candidate_image"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                            />
+                            <label htmlFor="candidate_image" className="cursor-pointer">
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                                  <Camera className="w-6 h-6 text-gray-400" />
+                                </div>
+                                <p className="text-sm font-medium text-gray-700">Upload Candidate Image</p>
+                                <p className="text-xs text-gray-500">PNG, JPG up to 2MB</p>
+                              </div>
+                            </label>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500 italic">Or enter image URL below:</p>
+                        <Input
+                          id="image_url"
+                          placeholder="https://example.com/image.jpg"
+                          value={candidateImage ? '' : candidateForm.image_url}
+                          onChange={(e) => setCandidateForm({ ...candidateForm, image_url: e.target.value })}
+                          disabled={!!candidateImage}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Candidate Note / bio (Optional)</Label>
+                      <Textarea
+                        id="description"
+                        placeholder="Additional info about candidate"
+                        value={candidateForm.description}
+                        onChange={(e) => setCandidateForm({ ...candidateForm, description: e.target.value })}
                       />
                     </div>
                     <Button type="submit" data-testid="add-candidate-btn" className="w-full bg-[#059669] hover:bg-[#047857]">
@@ -520,6 +625,9 @@ const AdminDashboard = () => {
                             <div>
                               <h4 className="font-semibold">{candidate.name}</h4>
                               <p className="text-sm text-gray-600">{candidate.party}</p>
+                              {candidate.description && (
+                                <p className="text-xs text-blue-600 mt-1 italic">Note: {candidate.description}</p>
+                              )}
                             </div>
                           </div>
                           <Button
@@ -552,6 +660,7 @@ const AdminDashboard = () => {
                     <thead>
                       <tr className="border-b">
                         <th className="text-left p-3 font-semibold">Name</th>
+                        <th className="text-left p-3 font-semibold">Gender</th>
                         <th className="text-left p-3 font-semibold">Email</th>
                         <th className="text-left p-3 font-semibold">Aadhaar</th>
                         <th className="text-left p-3 font-semibold">Status</th>
@@ -561,31 +670,34 @@ const AdminDashboard = () => {
                     <tbody>
                       {voters.length === 0 ? (
                         <tr>
-                          <td colSpan="5" className="text-center py-8 text-gray-500">
+                          <td colSpan="6" className="text-center py-8 text-gray-500">
                             No voters registered yet
                           </td>
                         </tr>
                       ) : (
                         voters.map((voter) => (
                           <tr key={voter.id} className="border-b hover:bg-gray-50">
-                            <td className="p-3">{voter.name}</td>
+                            <td className="p-3 font-medium text-gray-900">{voter.name}</td>
+                            <td className="p-3">
+                              <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-[10px] font-bold uppercase ring-1 ring-slate-200">
+                                {voter.gender || 'Other'}
+                              </span>
+                            </td>
                             <td className="p-3">{voter.email}</td>
                             <td className="p-3">{voter.aadhaar.slice(0, 4)}****{voter.aadhaar.slice(-4)}</td>
                             <td className="p-3">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                voter.status === 'active' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
+                              <span className={`px-2 py-1 rounded-full text-xs ${voter.status === 'active'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                                }`}>
                                 {voter.status}
                               </span>
                             </td>
                             <td className="p-3">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                voter.voted 
-                                  ? 'bg-blue-100 text-blue-800' 
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
+                              <span className={`px-2 py-1 rounded-full text-xs ${voter.voted
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-gray-100 text-gray-800'
+                                }`}>
                                 {voter.voted ? 'Yes' : 'No'}
                               </span>
                             </td>
@@ -643,19 +755,24 @@ const AdminDashboard = () => {
                         {results.candidates.map((candidate, index) => (
                           <div
                             key={candidate.id}
-                            className={`border rounded-lg p-4 ${
-                              index === 0 ? 'border-[#059669] bg-green-50' : ''
-                            }`}
+                            className={`border rounded-lg p-4 ${index === 0 ? 'border-[#059669] bg-green-50' : ''
+                              }`}
                             data-testid={`result-candidate-${candidate.id}`}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 {index === 0 && <span className="text-2xl">🏆</span>}
-                                <img
-                                  src={candidate.image_url}
-                                  alt={candidate.name}
-                                  className="w-12 h-12 rounded-full object-cover"
-                                />
+                                {candidate.image_url ? (
+                                  <img
+                                    src={candidate.image_url}
+                                    alt={candidate.name}
+                                    className="w-12 h-12 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                                    No Img
+                                  </div>
+                                )}
                                 <div>
                                   <h4 className="font-semibold text-lg">{candidate.name}</h4>
                                   <p className="text-sm text-gray-600">{candidate.party}</p>
@@ -666,7 +783,7 @@ const AdminDashboard = () => {
                                   {candidate.vote_count}
                                 </p>
                                 <p className="text-sm text-gray-600">
-                                  {results.total_votes > 0 
+                                  {results.total_votes > 0
                                     ? `${((candidate.vote_count / results.total_votes) * 100).toFixed(1)}%`
                                     : '0%'
                                   }
@@ -708,35 +825,68 @@ const AdminDashboard = () => {
                 </Button>
 
                 <div className="space-y-4">
+                  {fraudMetrics && (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                      <div className="p-4 bg-white border rounded-xl shadow-sm text-center">
+                        <p className="text-xs text-gray-500 uppercase font-black mb-1">Total Analyzed</p>
+                        <p className="text-2xl font-bold text-[#1e3a8a]">{fraudMetrics.total_analyzed}</p>
+                      </div>
+                      <div className="p-4 bg-white border rounded-xl shadow-sm text-center">
+                        <p className="text-xs text-gray-500 uppercase font-black mb-1">Anomalies</p>
+                        <p className="text-2xl font-bold text-[#ea580c]">{fraudMetrics.anomalies_found}</p>
+                      </div>
+                      <div className="p-4 bg-[#059669]/5 border border-[#059669]/20 rounded-xl shadow-sm text-center">
+                        <p className="text-xs text-[#059669] uppercase font-black mb-1">Accuracy Score</p>
+                        <p className="text-2xl font-black text-[#059669]">{fraudMetrics.accuracy_score}</p>
+                      </div>
+                      <div className="p-4 bg-[#1e3a8a]/5 border border-[#1e3a8a]/20 rounded-xl shadow-sm text-center">
+                        <p className="text-xs text-[#1e3a8a] uppercase font-black mb-1">Confidence</p>
+                        <p className="text-2xl font-black text-[#1e3a8a]">{fraudMetrics.confidence_level}</p>
+                      </div>
+                    </div>
+                  )}
+
                   {fraudData.length === 0 ? (
-                    <div className="text-center py-8">
+                    <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
                       <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-500" />
-                      <p className="text-gray-600">No suspicious activity detected</p>
+                      <p className="text-gray-600 font-medium">No suspicious activity detected</p>
+                      <p className="text-sm text-gray-400 mt-1">System is monitoring all transactions in real-time</p>
                     </div>
                   ) : (
                     <div>
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                        <p className="text-red-800 font-semibold">
-                          ⚠️ {fraudData.length} suspicious vote(s) detected
-                        </p>
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6 flex items-center gap-4 animate-pulse">
+                        <div className="p-3 bg-red-100 rounded-full">
+                          <AlertTriangle className="w-6 h-6 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="text-red-900 font-bold text-lg">
+                            Critical Alert: {fraudData.length} suspicious vote(s) detected
+                          </p>
+                          <p className="text-red-700 text-sm">Immediate review recommended for identified anomalies</p>
+                        </div>
                       </div>
-                      
-                      <div className="space-y-3 max-h-[400px] overflow-y-auto">
+
+                      <div className="grid md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2">
                         {fraudData.map((vote, index) => (
                           <div
                             key={index}
-                            className="border border-red-200 rounded-lg p-4 bg-red-50"
+                            className="border border-red-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden"
                             data-testid={`fraud-item-${index}`}
                           >
-                            <div className="flex items-center justify-between">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                            <div className="flex items-center justify-between relative z-10">
                               <div>
-                                <p className="font-semibold text-red-900">Suspicious Vote #{index + 1}</p>
-                                <p className="text-sm text-red-700">User ID: {vote.user_id}</p>
-                                <p className="text-sm text-red-700">
-                                  Time: {new Date(vote.timestamp).toLocaleString()}
-                                </p>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black uppercase rounded">Anomaly #{index + 1}</span>
+                                  <span className="text-gray-300">|</span>
+                                  <span className="text-xs text-gray-500">{new Date(vote.timestamp).toLocaleString()}</span>
+                                </div>
+                                <p className="font-bold text-gray-900">User UID: {vote.user_id}</p>
+                                <p className="text-sm text-gray-600 mt-1 font-mono bg-gray-50 p-1 rounded">SID: {vote.session_id || 'N/A'}</p>
                               </div>
-                              <AlertTriangle className="w-8 h-8 text-red-500" />
+                              <div className="p-3 bg-red-50 rounded-xl group-hover:bg-red-100 transition-colors">
+                                <AlertTriangle className="w-6 h-6 text-red-500" />
+                              </div>
                             </div>
                           </div>
                         ))}
