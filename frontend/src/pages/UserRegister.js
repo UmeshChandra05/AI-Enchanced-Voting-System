@@ -142,8 +142,21 @@ const UserRegister = () => {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Please enter a valid email address');
+      speak("Please enter a valid email address.");
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
       return;
     }
 
@@ -159,6 +172,7 @@ const UserRegister = () => {
       const response = await axios.post(`${API}/auth/register`, {
         name: formData.name,
         aadhaar: formData.aadhaar,
+        gender: formData.gender,
         email: formData.email,
         password: formData.password,
         face_image: capturedImage || null
@@ -168,13 +182,32 @@ const UserRegister = () => {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         toast.success('Registration successful! Redirecting...');
+        speak("Registration successful! Redirecting to your dashboard.");
         setTimeout(() => {
           navigate('/dashboard');
         }, 1500);
       }
     } catch (error) {
       console.error("Registration error:", error.response?.data);
-      toast.error(error.response?.data?.detail || 'Registration failed');
+
+      let errorMessage = 'Registration failed';
+
+      if (error.response?.data?.detail) {
+        if (Array.isArray(error.response.data.detail)) {
+          // Handle Pydantic validation errors (422)
+          errorMessage = error.response.data.detail
+            .map(err => `${err.loc[err.loc.length - 1]}: ${err.msg}`)
+            .join(', ');
+        } else {
+          // Handle custom HTTPExceptions (400, etc.)
+          errorMessage = error.response.data.detail;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
+      speak(`Registration failed. ${errorMessage}`);
     } finally {
       setLoading(false);
     }

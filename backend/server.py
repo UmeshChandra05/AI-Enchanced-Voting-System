@@ -194,7 +194,10 @@ def extract_face_embedding(image_array: np.ndarray) -> List[float]:
             model_name='Facenet',
             enforce_detection=True
         )
-        return embedding_objs[0]['embedding']
+        # DeepFace.represent returns a list of dicts, access embedding properly
+        if isinstance(embedding_objs, list) and len(embedding_objs) > 0:
+            return list(embedding_objs[0]['embedding'])  # type: ignore
+        raise ValueError("No face detected")
     except Exception as e:
         logger.error(f"Error extracting face embedding: {e}")
         raise HTTPException(status_code=400, detail="Could not detect face in image")
@@ -205,7 +208,8 @@ def compare_faces(embedding1: List[float], embedding2: List[float], threshold: f
         # Calculate Euclidean distance
         distance = np.linalg.norm(np.array(embedding1) - np.array(embedding2))
         logger.info(f"Face comparison distance: {distance}")
-        return distance < threshold
+        # Convert numpy bool to Python bool
+        return bool(distance < threshold)
     except Exception as e:
         logger.error(f"Error comparing faces: {e}")
         return False
